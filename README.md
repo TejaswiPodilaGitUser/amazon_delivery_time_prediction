@@ -1,5 +1,13 @@
 
+
 # Amazon Delivery Time Prediction
+
+## Visualization
+This section presents the visualizations that are part of the project, showcasing the performance of the machine learning model and the predictions.
+<img width="1696" alt="image" src="https://github.com/user-attachments/assets/b0cdb760-0b66-43f6-a80c-642533162506" />
+
+
+<img width="1706" alt="image" src="https://github.com/user-attachments/assets/c64116c4-ea0e-4441-a9ba-596ab8938b34" />
 
 ## Overview
 
