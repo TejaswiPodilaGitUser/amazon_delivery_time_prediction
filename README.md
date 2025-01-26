@@ -1,4 +1,4 @@
-README_CONTENT = """
+
 # Amazon Delivery Time Prediction
 
 ## Overview
