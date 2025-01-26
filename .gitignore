@@ -3,3 +3,7 @@ __pycache__/
 venv/
 *.log
 *.pyc
+mlruns/
+models/trained_models/*.pkl
+models/trained_models/
+*.pkl
