@@ -8,7 +8,6 @@ import mlflow.sklearn
 from charts import plot_predictions_vs_actual, plot_feature_importance, plot_delivery_time_distribution
 import matplotlib.pyplot as plt
 
-
 # Set the page layout to wide
 st.set_page_config(layout="wide")
 
@@ -84,6 +83,23 @@ if st.button("Predict Delivery Time"):
         try:
             prediction = model.predict(input_features)
             st.success(f"Estimated Delivery Time: {prediction[0]:.2f} hours")
+
+            # Key Insights for the given input
+            st.subheader("Key Insights")
+            avg_time = y_test.mean()
+            max_time = y_test.max()
+            min_time = y_test.min()
+
+            st.markdown(f"""
+            - **For Distance = {distance} km and Order Hour = {order_hour}:**
+                - **Predicted Delivery Time:** {prediction[0]:.2f} hours
+                - **Average Delivery Time in the Dataset:** {avg_time:.2f} hours
+                - **Fastest Delivery Time:** {min_time:.2f} hours
+                - **Slowest Delivery Time:** {max_time:.2f} hours
+            - **Distance Impact:** The farther the distance, the longer the delivery time.
+            - **Peak Hours:** Orders placed during peak hours might show slight delays.
+            """)
+
         except ValueError as e:
             st.error(f"Error in prediction: {e}")
     else:
@@ -93,20 +109,21 @@ if model:
     predictions = model.predict(X_test)
     st.subheader("Visualizations")
 
-    # Create two columns for the grid
-    col1, col2 = st.columns(2)
+    # Create three columns with spacing
+    col1, spacer, col2 = st.columns([1, 0.1, 1])  # Adjust widths as needed
 
-    # Plot predictions vs actual in the first column with figsize
+
+    # Plot predictions vs actual in the first column
     with col1:
-        fig, ax = plot_predictions_vs_actual(predictions, y_test)  # Get fig, ax
-        st.pyplot(fig)  # Display plot
+        fig, ax = plot_predictions_vs_actual(predictions, y_test)
+        st.pyplot(fig)
 
-    # Plot feature importance in the second column with figsize
+    # Plot feature importance in the second column
     with col2:
-        fig, ax = plot_feature_importance(model, X_train.columns)  # Get fig, ax
-        st.pyplot(fig)  # Display plot
+        fig, ax = plot_feature_importance(model, X_train.columns)
+        st.pyplot(fig)
 
-    # Plot delivery time distribution in the first column with figsize
+    # Plot delivery time distribution
     with col1:
-        fig, ax = plot_delivery_time_distribution(y_test)  # Get fig, ax
-        st.pyplot(fig)  # Display plot
+        fig, ax = plot_delivery_time_distribution(y_test)
+        st.pyplot(fig)
