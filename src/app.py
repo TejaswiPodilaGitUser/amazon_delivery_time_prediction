@@ -6,7 +6,9 @@ from sklearn.model_selection import train_test_split
 import mlflow
 import mlflow.sklearn
 from charts import plot_predictions_vs_actual, plot_feature_importance, plot_delivery_time_distribution
+from model_tuning import train_and_tune_model  # Import function for training and hyperparameter tuning
 import matplotlib.pyplot as plt
+import joblib
 
 # Set the page layout to wide
 st.set_page_config(layout="wide")
@@ -24,7 +26,7 @@ def get_latest_model_path(model_dir):
 
 try:
     model_path = get_latest_model_path(model_dir)
-    model = mlflow.sklearn.load_model(model_path)
+    model = joblib.load(model_path)  # Use joblib.load to load the saved model
     print("Model loaded successfully.")
 except Exception as e:
     model = None
@@ -76,6 +78,23 @@ def preprocess_input(distance, order_hour, df_columns):
 st.title("Amazon Delivery Time Prediction")
 distance = st.number_input("Distance (km)", min_value=0.0, step=0.1)
 order_hour = st.number_input("Order Hour", min_value=0, max_value=23)
+
+# Add button to trigger model tuning
+if st.button("Train & Tune Model"):
+    with st.spinner("Training and Tuning Model..."):
+        # Call model tuning function to perform training and hyperparameter tuning
+        best_model, best_params = train_and_tune_model(X_train, y_train)
+        st.success("Model trained and tuned successfully!")
+        st.write(f"Best Hyperparameters: {best_params}")
+
+        # Log model and hyperparameters to MLflow
+        mlflow.sklearn.log_model(best_model, "best_model")
+        mlflow.log_params(best_params)
+
+        # Save the best model locally
+        best_model_path = os.path.join(model_dir, f"best_model_{best_params}.pkl")
+        joblib.dump(best_model, best_model_path)  # Save using joblib
+        st.write(f"Best model saved to: {best_model_path}")
 
 if st.button("Predict Delivery Time"):
     input_features = preprocess_input(distance, order_hour, X.columns.tolist())
