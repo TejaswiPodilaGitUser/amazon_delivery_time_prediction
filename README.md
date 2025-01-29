@@ -1,4 +1,3 @@
-<img width="811" alt="image" src="https://github.com/user-attachments/assets/f666181c-fbcb-4fa3-b3c4-63afb2e8522d" />
 
 # Amazon Delivery Time Prediction
 
