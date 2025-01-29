@@ -1,4 +1,4 @@
-
+<img width="811" alt="image" src="https://github.com/user-attachments/assets/f666181c-fbcb-4fa3-b3c4-63afb2e8522d" />
 
 # Amazon Delivery Time Prediction
 
@@ -6,8 +6,15 @@
 This section presents the visualizations that are part of the project, showcasing the performance of the machine learning model and the predictions.
 <img width="1696" alt="image" src="https://github.com/user-attachments/assets/b0cdb760-0b66-43f6-a80c-642533162506" />
 
-
 <img width="1706" alt="image" src="https://github.com/user-attachments/assets/c64116c4-ea0e-4441-a9ba-596ab8938b34" />
+
+## Streamlit 
+
+<img width="837" alt="image" src="https://github.com/user-attachments/assets/99ed6d11-c3e6-4ccf-9677-4810a2e21054" />
+
+<img width="1703" alt="image" src="https://github.com/user-attachments/assets/6fabf145-5e3c-4a6a-920f-27b5c2c2249e" />
+
+<img width="811" alt="image" src="https://github.com/user-attachments/assets/a17c2609-5c0e-4a87-9cf5-331d00586e38" />
 
 ## Overview
 
