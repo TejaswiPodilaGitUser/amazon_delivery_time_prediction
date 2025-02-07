@@ -6,14 +6,11 @@ from sklearn.model_selection import train_test_split
 import mlflow
 import mlflow.sklearn
 from charts import plot_predictions_vs_actual, plot_feature_importance, plot_delivery_time_distribution
-from model_tuning import train_and_tune_model  # Import function for training and hyperparameter tuning
-import matplotlib.pyplot as plt
+from model_tuning import train_and_tune_model
 import joblib
 
-# Set the page layout to wide
 st.set_page_config(layout="wide")
 
-# Directory where the models are saved
 model_dir = "models/trained_models"
 
 def get_latest_model_path(model_dir):
@@ -26,52 +23,40 @@ def get_latest_model_path(model_dir):
 
 try:
     model_path = get_latest_model_path(model_dir)
-    model = joblib.load(model_path)  # Use joblib.load to load the saved model
-    print("Model loaded successfully.")
+    model = joblib.load(model_path)
+    st.success("Model loaded successfully.")
 except Exception as e:
     model = None
-    print(f"Error loading model: {e}")
+    st.error(f"Error loading model: {e}")
 
-# Load and preprocess the dataset
 data_path = "data/processed/cleaned_data.csv"
 df = pd.read_csv(data_path)
 target_column = "Delivery_Time"
 
 def preprocess_data(df):
+    df = df.copy()
     categorical_columns = df.select_dtypes(include=["object"]).columns.tolist()
     for col in categorical_columns:
         df[col] = df[col].astype('category').cat.codes
-
-    integer_columns = df.select_dtypes(include=["int64", "int32"]).columns.tolist()
-    df[integer_columns] = df[integer_columns].astype(np.float64)
+    df = df.astype(np.float64)
     return df
 
 df_processed = preprocess_data(df)
 X = df_processed.drop(columns=[target_column])
 y = df_processed[target_column]
-
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Function to preprocess input features for prediction
-def preprocess_input(distance, order_hour, df_columns):
-    input_data = pd.DataFrame([[distance, order_hour]], columns=['Distance', 'Order_Hour'])
-    
-    # Ensure that the columns of the input match the training data
-    missing_cols = set(df_columns) - set(input_data.columns)
-    for col in missing_cols:
-        input_data[col] = 0  # Add missing columns and set them to a default value (e.g., 0)
-    
-    # Ensure columns are in the same order as the training data
-    input_data = input_data[df_columns]
-    
-    # Preprocess the categorical and integer columns
-    categorical_columns = input_data.select_dtypes(include=["object"]).columns.tolist()
-    for col in categorical_columns:
-        input_data[col] = input_data[col].astype('category').cat.codes
+def preprocess_input(features, df_columns, model):
+    # Convert features to a DataFrame (assuming features only contains a few required values)
+    input_data = pd.DataFrame([features], columns=df_columns[:len(features)])
 
-    integer_columns = input_data.select_dtypes(include=["int64", "int32"]).columns.tolist()
-    input_data[integer_columns] = input_data[integer_columns].astype(np.float64)
-    
+    # Ensure all model-required columns are included, filling missing ones with 0
+    if hasattr(model, 'feature_names_in_'):
+        input_data = input_data.reindex(columns=model.feature_names_in_, fill_value=0)
+
+    # Apply preprocessing
+    input_data = preprocess_data(input_data)
+
     return input_data
 
 
@@ -79,70 +64,50 @@ st.title("Amazon Delivery Time Prediction")
 distance = st.number_input("Distance (km)", min_value=0.0, step=0.1)
 order_hour = st.number_input("Order Hour", min_value=0, max_value=23)
 
-# Add button to trigger model tuning
 if st.button("Train & Tune Model"):
     with st.spinner("Training and Tuning Model..."):
-        # Call model tuning function to perform training and hyperparameter tuning
         best_model, best_params = train_and_tune_model(X_train, y_train)
         st.success("Model trained and tuned successfully!")
         st.write(f"Best Hyperparameters: {best_params}")
-
-        # Log model and hyperparameters to MLflow
         mlflow.sklearn.log_model(best_model, "best_model")
         mlflow.log_params(best_params)
-
-        # Save the best model locally
-        best_model_path = os.path.join(model_dir, f"best_model_{best_params}.pkl")
-        joblib.dump(best_model, best_model_path)  # Save using joblib
+        best_model_path = os.path.join(model_dir, "best_model.pkl")
+        joblib.dump(best_model, best_model_path)
         st.write(f"Best model saved to: {best_model_path}")
 
 if st.button("Predict Delivery Time"):
-    input_features = preprocess_input(distance, order_hour, X.columns.tolist())
+    input_features = preprocess_input([distance, order_hour], X.columns.tolist(), model)
     if model:
         try:
             prediction = model.predict(input_features)
             st.success(f"Estimated Delivery Time: {prediction[0]:.2f} hours")
-
-            # Key Insights for the given input
-            st.subheader("Key Insights")
             avg_time = y_test.mean()
             max_time = y_test.max()
             min_time = y_test.min()
-
+            st.subheader("Key Insights")
             st.markdown(f"""
-            - **For Distance = {distance} km and Order Hour = {order_hour}:**
-                - **Predicted Delivery Time:** {prediction[0]:.2f} hours
-                - **Average Delivery Time in the Dataset:** {avg_time:.2f} hours
-                - **Fastest Delivery Time:** {min_time:.2f} hours
-                - **Slowest Delivery Time:** {max_time:.2f} hours
-            - **Distance Impact:** The farther the distance, the longer the delivery time.
-            - **Peak Hours:** Orders placed during peak hours might show slight delays.
+            - **Predicted Delivery Time:** {prediction[0]:.2f} hours
+            - **Average Delivery Time:** {avg_time:.2f} hours
+            - **Fastest Delivery Time:** {min_time:.2f} hours
+            - **Slowest Delivery Time:** {max_time:.2f} hours
+            - **Distance Impact:** Longer distances increase delivery time.
+            - **Peak Hours:** Orders during peak hours may be delayed.
             """)
-
         except ValueError as e:
             st.error(f"Error in prediction: {e}")
     else:
         st.error("Model not loaded.")
 
 if model:
-    predictions = model.predict(X_test)
+    predictions = model.predict(X_test.reindex(columns=model.feature_names_in_, fill_value=0))
     st.subheader("Visualizations")
-
-    # Create three columns with spacing
-    col1, spacer, col2 = st.columns([1, 0.1, 1])  # Adjust widths as needed
-
-
-    # Plot predictions vs actual in the first column
+    col1, spacer, col2 = st.columns([1, 0.1, 1])
     with col1:
         fig, ax = plot_predictions_vs_actual(predictions, y_test)
         st.pyplot(fig)
-
-    # Plot feature importance in the second column
     with col2:
         fig, ax = plot_feature_importance(model, X_train.columns)
         st.pyplot(fig)
-
-    # Plot delivery time distribution
     with col1:
         fig, ax = plot_delivery_time_distribution(y_test)
         st.pyplot(fig)

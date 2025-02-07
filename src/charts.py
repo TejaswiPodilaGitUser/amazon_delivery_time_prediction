@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
+import numpy as np
 import streamlit as st
 
 def plot_predictions_vs_actual(predictions, y_test):
@@ -14,15 +15,33 @@ def plot_predictions_vs_actual(predictions, y_test):
     return fig, ax  # Return fig and ax
 
 def plot_feature_importance(model, feature_names):
-    """Plot the feature importance from the model."""
-    fig, ax = plt.subplots(figsize=(12, 8))  # Create a new figure and axis object
+    """Plot the feature importance from the model, ensuring alignment."""
+    
+    # Check if model has feature importances
+    if not hasattr(model, "feature_importances_"):
+        raise AttributeError("The provided model does not have feature importances.")
+
     feature_importances = model.feature_importances_
-    ax.barh(feature_names, feature_importances, color=sns.color_palette("viridis", len(feature_names)))  # Color palette
+
+    # Ensure feature names and importances match in length
+    min_length = min(len(feature_importances), len(feature_names))
+    feature_importances = feature_importances[:min_length]
+    feature_names = feature_names[:min_length]
+
+    # Sort feature importances for better visualization
+    sorted_indices = np.argsort(feature_importances)
+    feature_names = np.array(feature_names)[sorted_indices]
+    feature_importances = feature_importances[sorted_indices]
+
+    # Plot
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.barh(feature_names, feature_importances, color=sns.color_palette("viridis", len(feature_names)))
     ax.set_xlabel("Importance", fontsize=16, labelpad=15)
     ax.set_ylabel("Features", fontsize=16, labelpad=15)
     ax.set_title("Feature Importance", fontsize=20, pad=25)
     ax.tick_params(axis='both', labelsize=14, rotation=20)
-    return fig, ax  # Return fig and ax
+
+    return fig, ax
 
 def plot_delivery_time_distribution(y_test):
     """Plot the distribution of delivery times."""
