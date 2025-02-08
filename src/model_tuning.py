@@ -21,7 +21,6 @@ def tune_gradient_boosting(x_train, y_train):
         'min_samples_leaf': [1, 2, 5],
     }
     grid_search = GridSearchCV(GradientBoostingRegressor(), param_grid, cv=cv, scoring='r2', n_jobs=-1)
-
     grid_search.fit(x_train, y_train)
     return grid_search.best_estimator_, grid_search.best_params_
 
@@ -35,21 +34,21 @@ def tune_random_forest(x_train, y_train):
         'max_features': ['sqrt', 'log2', None],
     }
     random_search = RandomizedSearchCV(RandomForestRegressor(), param_dist, n_iter=10, cv=cv, random_state=42, scoring='r2', n_jobs=-1)
-
     random_search.fit(x_train, y_train)
     return random_search.best_estimator_, random_search.best_params_
 
 # Combined function to tune both models
 def train_and_tune_model(x_train, y_train):
-    # Tuning Gradient Boosting Model
     print("Tuning Gradient Boosting...")
     best_gb_model, best_gb_params = tune_gradient_boosting(x_train, y_train)
     print("Best Gradient Boosting Model:", best_gb_model)
 
-    # Tuning Random Forest Model
     print("Tuning Random Forest...")
     best_rf_model, best_rf_params = tune_random_forest(x_train, y_train)
     print("Best Random Forest Model:", best_rf_model)
 
     # Return the best model and parameters
-    return best_gb_model if best_gb_params else best_rf_model, best_gb_params if best_gb_params else best_rf_params
+    if best_gb_model and best_rf_model:
+        return (best_gb_model if best_gb_params['learning_rate'] > 0.05 else best_rf_model), \
+               (best_gb_params if best_gb_params['learning_rate'] > 0.05 else best_rf_params)
+    return best_gb_model, best_gb_params

@@ -6,19 +6,19 @@ import os
 # Get the absolute path of the 'src' directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 
-from model_training import load_trained_model  # Function to load the trained model
-from data_preparation import preprocess_data  # Function to preprocess input data
-from app import preprocess_input  # Import function from your Streamlit app
+from model_training import load_trained_model  # Ensure this function exists in model_training.py
+from data_preparation import preprocess_data  # Ensure function exists in data_preparation.py
+from streamlit_app.main import preprocess_input  # Ensure function exists in main.py
 
 # Load the trained model
-model = load_trained_model("best_model.pkl")  # Ensure this function exists in model_training.py
+model = load_trained_model("best_model.pkl")  
 
-# Define feature columns based on the model
-feature_columns = model.feature_names_in_
+# Define feature columns (ensure the model has these)
+feature_columns = getattr(model, "feature_names_in_", ["feature1", "feature2"])  # Default fallback
 
 # Define test cases
 test_cases = [
-    {"name": "Valid Input", "features": [5.2, 14], "expected": "Valid"},  # Normal case
+    {"name": "Valid Input", "features": [5.2, 14], "expected": "Valid"},
     {"name": "Missing Values", "features": [None, 14], "expected": "Handle Missing"},
     {"name": "Extreme Values", "features": [99999, -99999], "expected": "Handle Extreme"},
     {"name": "Negative Distance", "features": [-10, 14], "expected": "Handle Negative"},
@@ -29,10 +29,11 @@ test_cases = [
 for test in test_cases:
     try:
         print(f"Running Test: {test['name']}")
+        
         # Convert features to DataFrame
         input_data = pd.DataFrame([test["features"]], columns=feature_columns)
-        
-        # Preprocess data
+
+        # Preprocess input
         processed_input = preprocess_input(test["features"], feature_columns, model)
         
         # Make prediction

@@ -15,34 +15,35 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.impute import SimpleImputer
 from mlflow.models.signature import infer_signature
 
-# Set MLflow experiment
-mlflow.set_experiment("Amazon Delivery Time Prediction")
+def set_experiment():
+    mlflow.set_experiment("Amazon Delivery Time Prediction")
 
-# Load Data
 def load_data(file_path):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Data file not found at {file_path}")
-    return pd.read_csv(file_path)
+    df = pd.read_csv(file_path)
+    print("✅ Data loaded successfully.")
+    print("Columns in dataset:", df.columns.tolist())
+    return df
 
-# Data Preprocessing
 def preprocess_data(df):
     for col in df.select_dtypes(include=["object"]).columns:
         df[col] = df[col].astype('category').cat.codes  
-
+    
     imputer = SimpleImputer(strategy='mean')
     df[df.select_dtypes(include=["float64", "int64"]).columns] = imputer.fit_transform(
         df[df.select_dtypes(include=["float64", "int64"]).columns]
     )
-    
+    print("✅ Data preprocessed successfully.")
     return df
 
-# Data Splitting
 def split_data(df, target_column):
+    if target_column not in df.columns:
+        raise KeyError(f"Target column '{target_column}' not found in dataset.")
     x = df.drop(columns=[target_column])
     y = df[target_column]
     return train_test_split(x, y, test_size=0.2, random_state=42)
 
-# Model Evaluation
 def evaluate_model(y_true, y_pred):
     return {
         "mse": mean_squared_error(y_true, y_pred),
@@ -51,7 +52,6 @@ def evaluate_model(y_true, y_pred):
         "r2": r2_score(y_true, y_pred)
     }
 
-# Hyperparameter Optimization using Optuna
 def hyperparameter_tuning(x_train, y_train):
     def objective(trial):
         params = {
@@ -62,15 +62,13 @@ def hyperparameter_tuning(x_train, y_train):
             'max_features': trial.suggest_categorical('max_features', ['sqrt', 'log2'])
         }
         model = RandomForestRegressor(**params, random_state=42)
-        return cross_val_score(
-            model, x_train, y_train, cv=KFold(n_splits=5, shuffle=True, random_state=42), scoring='r2'
-        ).mean()
+        return cross_val_score(model, x_train, y_train, cv=KFold(n_splits=5, shuffle=True, random_state=42), scoring='r2').mean()
     
     study = optuna.create_study(direction='maximize')
     study.optimize(objective, n_trials=20)
+    print("✅ Hyperparameter tuning completed.")
     return RandomForestRegressor(**study.best_params, random_state=42)
 
-# Model Training & Logging
 def train_and_log_model(model_name, model, x_train, x_test, y_train, y_test):
     pipeline = Pipeline([
         ('scaler', StandardScaler()),
@@ -85,10 +83,10 @@ def train_and_log_model(model_name, model, x_train, x_test, y_train, y_test):
         mlflow.log_params(model.get_params() if hasattr(model, "get_params") else {})
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(pipeline, artifact_path=model_name, signature=infer_signature(x_test, y_pred))
+        print(f"✅ {model_name} trained and logged successfully.")
         
         return pipeline, metrics
 
-# Save Best Model
 def save_best_model(best_model):
     model_dir = "models/trained_models"
     os.makedirs(model_dir, exist_ok=True)
@@ -97,8 +95,8 @@ def save_best_model(best_model):
     joblib.dump(best_model, model_path)
     print(f"✅ Best model saved at: {model_path}")
 
-# Main Function
 def main():
+    set_experiment()
     file_path = "data/processed/cleaned_data.csv"
     target_column = "Delivery_Time"
     

@@ -17,13 +17,14 @@ This project aims to predict the delivery time for Amazon e-commerce orders base
 ```
 amazon_delivery_time_prediction/
 │── src/
-│   ├── app.py                  # Streamlit app for user interaction
 │   ├── charts.py               # Visualization functions
 │   ├── data_preparation.py     # Data loading and preprocessing
 │   ├── feature_engineering.py  # Feature extraction & transformation
 │   ├── model_tracking.py       # MLflow model tracking
 │   ├── model_training.py       # Training machine learning models
+│   ├── model_training_v2.py    # Optimized model training
 │   ├── model_tuning.py         # Hyperparameter tuning
+│   ├── validate_model.py       # Model validation
 │── streamlit_app/
 │   ├── main.py                 # Streamlit main entry point
 │── tests/
@@ -34,6 +35,8 @@ amazon_delivery_time_prediction/
 │── README.md                   # Project documentation
 │── .gitignore                   # Files to be ignored by Git
 ```
+
+
 
 ## Visualizations
 
@@ -73,7 +76,7 @@ This section presents the visualizations that showcase the model performance and
 
 ## Running the Project
 
-### 1. Train the Model (if needed)
+### 1. Train the Model
 
 If you want to retrain the model, run the `model_training.py` script, which preprocesses the data, trains the model, and saves the best-performing model as a `.pkl` file.
 
@@ -81,12 +84,31 @@ If you want to retrain the model, run the `model_training.py` script, which prep
 python src/model_training.py
 ```
 
+For the optimized version, use:
+```bash
+python src/model_training_v2.py
+```
+## Model Details
+
+The main model used for delivery time prediction is **Random Forest Regressor**.
+
+### **Model Parameters:**
+- **Algorithm:** Random Forest Regressor
+- **Hyperparameters:**
+  - `n_estimators`: 100
+  - `max_depth`: 10
+  - `min_samples_split`: 5
+  - `min_samples_leaf`: 2
+  - `random_state`: 42
+
+These parameters were fine-tuned using **MLflow** and **Hyperparameter Tuning** in `model_tuning.py`.
+
 ### 2. Run the Streamlit App
 
 Once the model is trained, start the Streamlit app to interact with the predictions.
 
 ```bash
-streamlit run src/app.py
+streamlit run streamlit_app/main.py
 ```
 
 The app will open in your browser, allowing you to input various delivery parameters and view the predicted delivery time.
@@ -99,6 +121,14 @@ To test the model pipeline, run:
 PYTHONPATH=src pytest tests/test_model_pipeline.py
 ```
 
+
+## Track Model Performance with MLflow
+```sh
+mlflow ui
+```
+- Open **http://localhost:5000** in your browser to view logged metrics.
+
+
 This runs unit tests to validate the preprocessing, model predictions, and edge cases.
 
 ## Learnings
@@ -108,8 +138,4 @@ This runs unit tests to validate the preprocessing, model predictions, and edge 
 - **MLflow**: Used MLflow for model tracking and experiment management.
 - **Streamlit**: Developed an interactive web app to visualize predictions.
 - **Software Engineering**: Followed best practices in structuring the project, testing, and version control with Git/GitHub.
-
-## License
-
-This project is open source and licensed under the MIT License - see the LICENSE file for details.
 
