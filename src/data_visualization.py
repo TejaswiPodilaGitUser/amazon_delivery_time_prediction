@@ -3,39 +3,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Load your dataset
-#df = pd.read_csv("data/raw/amazon_delivery.csv")
-df = pd.read_csv("data/processed/cleaned_data.csv")
+def plot_delivery_time_distribution(df):
+    """
+    Plot the histogram and KDE of delivery time distribution.
+    """
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.histplot(df["Delivery_Time"], bins=30, kde=True, color="blue", ax=ax)
+    ax.set_xlabel("Delivery Time (minutes)")
+    ax.set_ylabel("Frequency")
+    ax.set_title("Delivery Time Distribution")
+    return fig, ax
 
+def plot_outlier_detection(df):
+    """
+    Plot a boxplot to detect outliers in the delivery time.
+    """
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.boxplot(x=df["Delivery_Time"], color="red", ax=ax)
+    ax.set_xlabel("Delivery Time (minutes)")
+    ax.set_title("Outlier Detection in Delivery Time")
+    return fig, ax
 
-# Select only numeric columns
-numeric_df = df.select_dtypes(include=[np.number])
+def plot_feature_correlation(df):
+    """
+    Plot a heatmap of feature correlations in the dataset.
+    """
+    numeric_df = df.select_dtypes(include=[np.number])
+    corr_matrix = numeric_df.corr()
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", linewidths=0.5, ax=ax)
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+    ax.set_title("Feature Correlation Heatmap")
+    return fig, ax
 
-# Create a single figure with adjusted layout
-fig, axes = plt.subplots(2, 2, figsize=(16, 12), 
-                         gridspec_kw={'width_ratios': [1.5, 1], 'height_ratios': [1, 1.5]})
-
-# 1️⃣ Histogram - Delivery Time Distribution (First row, first column - Wider)
-sns.histplot(df["Delivery_Time"], bins=30, kde=True, color="blue", ax=axes[0, 0])
-axes[0, 0].set_xlabel("Delivery Time (minutes)")
-axes[0, 0].set_ylabel("Frequency")
-axes[0, 0].set_title("Distribution of Delivery Time")
-
-# 2️⃣ Boxplot - Detecting Outliers (First row, second column - Narrower)
-sns.boxplot(x=df["Delivery_Time"], color="red", ax=axes[0, 1])
-axes[0, 1].set_xlabel("Delivery Time (minutes)")
-axes[0, 1].set_title("Boxplot for Outlier Detection in Delivery Time")
-
-# 3️⃣ Correlation Heatmap - Full-width (Second row spanning both columns)
-corr_matrix = numeric_df.corr()
-heatmap = sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", linewidths=0.5, ax=axes[1, 0])
-
-# Rotate x-axis labels by 45 degrees for better readability
-axes[1, 0].set_xticklabels(axes[1, 0].get_xticklabels(), rotation=45, ha='right')
-
-# Remove the empty second subplot in the second row
-fig.delaxes(axes[1, 1])
-
-# Adjust layout
-plt.tight_layout()
-plt.show()
+def plot_distance_vs_delivery_time(df):
+    """
+    Plot a scatter plot of Distance vs. Delivery Time.
+    """
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.scatterplot(x=df["Distance"], y=df["Delivery_Time"], color="green", alpha=0.5, s=50, ax=ax)
+    ax.set_xlabel("Distance (km)")
+    ax.set_ylabel("Delivery Time (minutes)")
+    ax.set_title("Distance vs. Delivery Time")
+    return fig, ax

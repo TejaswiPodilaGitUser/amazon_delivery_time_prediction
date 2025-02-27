@@ -1,54 +1,40 @@
-import joblib
-import mlflow
-import mlflow.sklearn
 import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_squared_log_error
 import numpy as np
-from sklearn.model_selection import KFold
+import logging
+import pickle
+import joblib
 
-# Define the cross-validation strategy with random_state
-cv = KFold(n_splits=5, shuffle=True, random_state=42)
+# Setup logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Hyperparameter tuning for Gradient Boosting Regressor
-def tune_gradient_boosting(x_train, y_train):
-    param_grid = {
-        'n_estimators': [50, 100, 200, 300],
-        'learning_rate': [0.01, 0.05, 0.1, 0.2],
-        'max_depth': [3, 5, 7, 10],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 5],
-    }
-    grid_search = GridSearchCV(GradientBoostingRegressor(), param_grid, cv=cv, scoring='r2', n_jobs=-1)
-    grid_search.fit(x_train, y_train)
-    return grid_search.best_estimator_, grid_search.best_params_
+# File path to the trained model
+file_path = "models/best_model.pkl"
 
-# Hyperparameter tuning for Random Forest Regressor
-def tune_random_forest(x_train, y_train):
-    param_dist = {
-        'n_estimators': [50, 100, 200, 300],
-        'max_depth': [3, 5, 7, 10],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 5],
-        'max_features': ['sqrt', 'log2', None],
-    }
-    random_search = RandomizedSearchCV(RandomForestRegressor(), param_dist, n_iter=10, cv=cv, random_state=42, scoring='r2', n_jobs=-1)
-    random_search.fit(x_train, y_train)
-    return random_search.best_estimator_, random_search.best_params_
+logging.info(f"📂 Loading file: {file_path}")
 
-# Combined function to tune both models
-def train_and_tune_model(x_train, y_train):
-    print("Tuning Gradient Boosting...")
-    best_gb_model, best_gb_params = tune_gradient_boosting(x_train, y_train)
-    print("Best Gradient Boosting Model:", best_gb_model)
+try:
+    with open(file_path, "rb") as file:
+        model_data = joblib.load(file)
 
-    print("Tuning Random Forest...")
-    best_rf_model, best_rf_params = tune_random_forest(x_train, y_train)
-    print("Best Random Forest Model:", best_rf_model)
+    # Ensure model_data is a dictionary
+    if not isinstance(model_data, dict) or "model" not in model_data or "feature_names" not in model_data:
+        logging.error("❌ Invalid model file format. Expected a dictionary with 'model' and 'feature_names'.")
+        exit()
 
-    # Return the best model and parameters
-    if best_gb_model and best_rf_model:
-        return (best_gb_model if best_gb_params['learning_rate'] > 0.05 else best_rf_model), \
-               (best_gb_params if best_gb_params['learning_rate'] > 0.05 else best_rf_params)
-    return best_gb_model, best_gb_params
+    pipeline = model_data["model"]
+    feature_names = model_data["feature_names"]
+
+    logging.info(f"✅ Model loaded successfully.")
+    logging.info(f"🔢 Expected Features: {len(feature_names)} - {feature_names}")
+
+    # Ensure feature names match
+    if len(feature_names) != pipeline.named_steps["model"].n_features_in_:
+        logging.error(f"❌ Feature count mismatch: Model expects {pipeline.named_steps['model'].n_features_in_}, but got {len(feature_names)}.")
+        exit()
+
+    logging.info("✅ Feature names validated successfully.")
+
+except FileNotFoundError:
+    logging.error(f"❌ File not found: {file_path}")
+except Exception as e:
+    logging.error(f"❌ Unexpected error: {e}")

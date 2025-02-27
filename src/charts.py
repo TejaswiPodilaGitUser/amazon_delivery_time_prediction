@@ -19,7 +19,8 @@ def plot_feature_importance(model, feature_names):
     
     # Check if model has feature importances
     if not hasattr(model, "feature_importances_"):
-        raise AttributeError("The provided model does not have feature importances.")
+        st.warning("The provided model does not have feature importances. Skipping feature importance visualization.")
+        return None, None  # Return None if no feature importance
 
     feature_importances = model.feature_importances_
 

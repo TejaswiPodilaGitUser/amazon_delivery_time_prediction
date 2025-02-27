@@ -1,118 +1,112 @@
-import os
 import streamlit as st
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-import mlflow
-import mlflow.sklearn
-
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-
-from src.charts import plot_predictions_vs_actual, plot_feature_importance, plot_delivery_time_distribution
-from src.model_tuning import train_and_tune_model
 import joblib
+import logging
+import matplotlib.pyplot as plt
+import seaborn as sns
+import sys
+import os
+from datetime import datetime
 
-st.set_page_config(layout="wide")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from Visualization.data_visualization import generate_plots
 
-model_dir = "models/trained_models"
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src import sidebar  # Import sidebar logic
 
-def get_latest_model_path(model_dir):
-    model_files = [f for f in os.listdir(model_dir) if f.startswith("best_model_") and f.endswith(".pkl")]
-    model_files.sort(reverse=True)
-    if model_files:
-        return os.path.join(model_dir, model_files[0])
-    else:
-        raise FileNotFoundError("No model file found in the specified directory.")
+# Initialize logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
+# Load the trained model
 try:
-    model_path = get_latest_model_path(model_dir)
-    model = joblib.load(model_path)
-    st.success("Model loaded successfully.")
+    model_data = joblib.load('models/best_model.pkl')
+
+    if isinstance(model_data, dict):  # If saved as a dictionary
+        model = model_data['model']
+        feature_names = model_data.get('feature_names', [])
+    else:  # If saved directly as a Pipeline
+        model = model_data
+        feature_names = getattr(model.named_steps['model'], 'feature_names_in_', [])
+    
+    feature_names = [str(f) for f in feature_names]  # Ensure feature names are strings
+    logger.info("✅ Model loaded successfully")
+    logger.debug(f"Extracted feature names: {feature_names}")
 except Exception as e:
+    logger.error(f"❌ Error loading model: {e}")
     model = None
-    st.error(f"Error loading model: {e}")
+    feature_names = []
 
-data_path = "data/processed/cleaned_data.csv"
-df = pd.read_csv(data_path)
-target_column = "Delivery_Time"
+# Define feature mappings
+WEATHER_MAP = {'Sunny': 0, 'Cloudy': 1, 'Stormy': 2, 'Sandstorms': 3}
+TRAFFIC_MAP = {'Low': 0, 'Medium': 1, 'High': 2, 'Jam': 3}
+# Define vehicle mapping
+VEHICLE_MAP = {'motorcycle': 0, 'scooter': 1, 'car': 2, 'bicycle': 3, 'truck': 4}
+AREA_MAP = {'Urban': 0, 'Suburban': 1, 'Rural': 2}  # Add more categories if needed
 
-def preprocess_data(df):
-    df = df.copy()
-    categorical_columns = df.select_dtypes(include=["object"]).columns.tolist()
-    for col in categorical_columns:
-        df[col] = df[col].astype('category').cat.codes
-    df = df.astype(np.float64)
-    return df
-
-df_processed = preprocess_data(df)
-X = df_processed.drop(columns=[target_column])
-y = df_processed[target_column]
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-def preprocess_input(features, df_columns, model):
-    # Convert features to a DataFrame (assuming features only contains a few required values)
-    input_data = pd.DataFrame([features], columns=df_columns[:len(features)])
-
-    # Ensure all model-required columns are included, filling missing ones with 0
-    if hasattr(model, 'feature_names_in_'):
-        input_data = input_data.reindex(columns=model.feature_names_in_, fill_value=0)
-
-    # Apply preprocessing
-    input_data = preprocess_data(input_data)
-
-    return input_data
+CATEGORY_MAP = {
+    'Clothing': 0, 'Electronics': 1, 'Sports': 2, 'Cosmetics': 3, 'Toys': 4, 
+    'Shoes': 5, 'Apparel': 6, 'Snacks': 7, 'Outdoor': 8, 'Jewelry': 9, 
+    'Kitchen': 10, 'Groceries': 11, 'Books': 12, 'Others': 13, 'Home': 14, 
+    'Pet supplies': 15, 'Skin care': 16
+}
 
 
+def preprocess_data(input_data):
+    """Preprocess input data based on the selected options"""
+    try:
+        logger.debug(f"Raw Input Data: {input_data}")
+
+        # Convert categorical values
+        input_data['Weather'] = WEATHER_MAP.get(input_data.get('Weather', 'Sunny'), 0)
+        input_data['Traffic'] = TRAFFIC_MAP.get(input_data.get('Traffic', 'Medium'), 1)
+        logger.debug(f"Mapped categorical values: Weather={input_data['Weather']}, Traffic={input_data['Traffic']}")
+        input_data['Vehicle'] = VEHICLE_MAP.get(input_data.get('Vehicle', 'motorcycle'), 0)  # Default to 'motorcycle'
+        input_data['Area'] = AREA_MAP.get(input_data.get('Area', 'Urban'), 0)  # Default to 'Urban'
+        input_data['Category'] = CATEGORY_MAP.get(input_data.get('Category', 'Others'), 13)  # Default to 'Others'
+
+
+
+        # Convert to DataFrame
+        input_df = pd.DataFrame([input_data])
+
+        # Ensure correct feature order and fill missing columns with default values
+        if feature_names:
+            for feature in feature_names:
+                if feature not in input_df.columns:
+                    input_df[feature] = 0  # Fill missing features with default value
+            input_df = input_df[feature_names]  # Reorder columns
+        else:
+            logger.error("Model feature names not available.")
+            raise ValueError("Feature names are missing in the trained model.")
+
+        logger.debug(f"Final Preprocessed Data (Correct Feature Order):\n{input_df}")
+        return input_df
+    except Exception as e:
+        logger.error(f"Error during preprocessing: {e}")
+        return None
+
+# Streamlit UI
 st.title("Amazon Delivery Time Prediction")
-distance = st.number_input("Distance (km)", min_value=0.0, step=0.1)
-order_hour = st.number_input("Order Hour", min_value=0, max_value=23)
 
-if st.button("Train & Tune Model"):
-    with st.spinner("Training and Tuning Model..."):
-        best_model, best_params = train_and_tune_model(X_train, y_train)
-        st.success("Model trained and tuned successfully!")
-        st.write(f"Best Hyperparameters: {best_params}")
-        mlflow.sklearn.log_model(best_model, "best_model")
-        mlflow.log_params(best_params)
-        best_model_path = os.path.join(model_dir, "best_model.pkl")
-        joblib.dump(best_model, best_model_path)
-        st.write(f"Best model saved to: {best_model_path}")
+# Get user input from sidebar
+input_data, selected_options = sidebar.get_input_data()
 
-if st.button("Predict Delivery Time"):
-    input_features = preprocess_input([distance, order_hour], X.columns.tolist(), model)
-    if model:
-        try:
-            prediction = model.predict(input_features)
-            st.success(f"Estimated Delivery Time: {prediction[0]:.2f} hours")
-            avg_time = y_test.mean()
-            max_time = y_test.max()
-            min_time = y_test.min()
-            st.subheader("Key Insights")
-            st.markdown(f"""
-            - **Predicted Delivery Time:** {prediction[0]:.2f} hours
-            - **Average Delivery Time:** {avg_time:.2f} hours
-            - **Fastest Delivery Time:** {min_time:.2f} hours
-            - **Slowest Delivery Time:** {max_time:.2f} hours
-            - **Distance Impact:** Longer distances increase delivery time.
-            - **Peak Hours:** Orders during peak hours may be delayed.
-            """)
-        except ValueError as e:
-            st.error(f"Error in prediction: {e}")
+# Prediction
+if st.sidebar.button("Predict Delivery Time"):
+    if model is None:
+        st.sidebar.error("Model is not loaded. Check the model file path.")
     else:
-        st.error("Model not loaded.")
-
-if model:
-    predictions = model.predict(X_test.reindex(columns=model.feature_names_in_, fill_value=0))
-    st.subheader("Visualizations")
-    col1, spacer, col2 = st.columns([1, 0.1, 1])
-    with col1:
-        fig, ax = plot_predictions_vs_actual(predictions, y_test)
-        st.pyplot(fig)
-    with col2:
-        fig, ax = plot_feature_importance(model, X_train.columns)
-        st.pyplot(fig)
-    with col1:
-        fig, ax = plot_delivery_time_distribution(y_test)
-        st.pyplot(fig)
+        input_df = preprocess_data(input_data)
+        if input_df is not None:
+            try:
+                logger.debug(f"Making prediction with DataFrame columns: {input_df.columns.tolist()}")
+                predicted_time = model.predict(input_df)[0]
+                st.sidebar.success(f"Predicted Delivery Time: {predicted_time:.2f} minutes")
+                st.write(f"### Expected Delivery Time: {predicted_time:.2f} minutes")
+                
+                # Generate plots based on selected features
+                generate_plots("data/processed/engineered_data.csv", selected_options)
+            except Exception as e:
+                logger.error(f"Error during prediction: {e}")
+                st.error(f"Error during prediction: {e}")

@@ -137,7 +137,12 @@ This runs unit tests to validate the preprocessing, model predictions, and edge 
 ### 3️⃣ Boxplot for Outlier Detection
 - Identifies extreme values that might distort predictions.
 
-![alt text](<Screenshot 2025-02-10 at 10.55.05 PM.png>)
+### 4️⃣Scatter Plot: Distance vs. Delivery Time
+- Displays the relationship between distance traveled and delivery time.
+- Helps identify patterns such as whether longer distances lead to increased delivery times.
+- Useful for detecting anomalies where short distances have unusually long delivery times, indicating potential operational inefficiencies.
+
+![alt text](image.png)
 
 ### MLflow UI 
 - helps track experiments, compare models, and visualize metrics efficiently. It ensures reproducibility and model versioning.
